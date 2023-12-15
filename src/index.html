@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Page title</title>
-    <link rel="stylesheet" href="./css/styles.css" />
-    <script type="module" src="./js/index.js"></script>
+    <title>Homework 11</title>
   </head>
   <body>
     <form class="search-form" id="search-form">
@@ -15,9 +14,17 @@
         autocomplete="off"
         placeholder="Search images..."
       />
-      <button type="submit">Search</button>
+      <button type="submit" class="search">Search</button>
     </form>
     <div class="gallery"></div>
-    <div class="load-more"></div>
+    <div class="loading">
+      <div class="ball"></div>
+      <div class="ball"></div>
+      <div class="ball"></div>
+    </div>
+      <div class="scroll-top">
+    <span class="btn-position btn-style btn-hidden">^</i>
+</div>
+    <script src="js/index.js" type="module"></script>
   </body>
 </html>

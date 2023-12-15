@@ -1,86 +1,78 @@
-import simpleLightbox from "simplelightbox";
-import Notiflix from "notiflix";
-import { createMarkup } from "./markup";
-import { getData } from "./api-set";
+import '../css/styles.css';
+import { Notify } from 'notiflix/build/notiflix-notify-aio';
+import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import refs from './refs';
+import NewApiService from './api-service';
+import smoothScroll from './smoothScroll';
+import throttle from 'lodash.throttle';
+import scrollTop from './scrollTop';
+import createMarkup from './markup';
 
-const form = document.querySelector('.search-form');
-const gallery = document.querySelector('.gallery');
-const loadMore = document.querySelector('.load-more');
+refs.searchForm.addEventListener('submit', onSearch);
+document.addEventListener('scroll', throttle(onLoadingScroll, 500));
 
-const options = ({
-    root: null,
-    rootMargin: "300px",
-    threshold: 0
-})
+const simpleLightbox = new SimpleLightbox('.gallery-link', {});
+const newApiService = new NewApiService();
 
-const observer = new IntersectionObserver(handlePagination, options)
-
-let maxPages;
+let pageAmount;
 let currentPage;
-let searchQuery = '';
 
-const lightbox = new simpleLightbox('.gallery a', {
-    captionsDelay: 250
-});
-
-form.addEventListener('submit', handleSubmit);
-
-async function handleSubmit(evt) {
-    evt.preventDefault();
-
-    lightbox.refresh()
-    searchQuery = form.elements.searchQuery.value;
-    gallery.innerHTML = '';
-    currentPage = 1;
-
-    if (searchQuery === '' || searchQuery.trim() === '') {
-        Notiflix.Notify.warning("We're sorry, but you've reached the end of search results.")
-        return; 
+function onSearch(event) {
+  newApiService.resetPage();
+  refs.gallery.innerHTML = '';
+  event.preventDefault();
+  newApiService.searchQuery = refs.input.value.trim();
+  if (!newApiService.searchQuery) {
+    return Notify.info(
+      'The input field must not be empty. Please enter something.'
+    );
+  }
+  event.target.reset();
+  async function onFetch() {
+    const dataPictures = await newApiService.fetchPictures();
+    const pictures = dataPictures.data.hits;
+    const totalPictures = dataPictures.data.totalHits;
+    pageAmount = dataPictures.data.totalHits / 40;
+    currentPage = newApiService.page;
+    createMarkup(pictures);
+    if (pictures.length === 0) {
+      Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    } else {
+      Notify.success(`Hooray! We found ${totalPictures} images.`);
     }
-
-    Notiflix.Loading.circle('Loading...');
-    try {
-        Notiflix.Loading.remove();
-        const { totalHits, hits } = await getData(searchQuery.trim(), currentPage);
-        maxPages = Math.ceil(totalHits / 40);
-        
-        gallery.insertAdjacentHTML('beforeend', createMarkup(hits))
-            if (totalHits) 
-            { Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`) }
-            else { Notiflix.Notify.failure("Sorry, there are no images matching your search query. Please try again.") }
-
-            
-        lightbox.refresh();
-        if (currentPage < maxPages) {
-            observer.observe(loadMore)
-        }
-
-        
-    } catch (error) {
-        Notiflix.Loading.remove();
-
-        Notiflix.Notify.failure(error.message);
-    }
+    simpleLightbox.refresh();
+  }
+  onFetch();
 }
 
-async function handlePagination(entries, observer) {
-    for (const entry of entries) {
-        if (entry.isIntersecting) {
-            currentPage += 1;
+async function onLoadMore() {
+  newApiService.incrementPage();
+  const dataPictures = await newApiService.fetchPictures();
+  const pictures = dataPictures.data.hits;
+  refs.loading.classList.remove('show');
+  pageAmount = dataPictures.data.totalHits / 40;
+  currentPage = newApiService.page;
+  createMarkup(pictures);
+  smoothScroll();
+  if (currentPage >= pageAmount) {
+    refs.loading.classList.remove('show');
+    Notify.info("We're sorry, but you've reached the end of search results.");
+  }
 
-            if (currentPage >= maxPages) {
-                observer.unobserve(entry.target);
-                Notiflix.Notify.warning("We're sorry, but you've reached the end of search results.")
-            }
-            try {
-                const data = await getData(searchQuery, currentPage);
-                
-                gallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
-                lightbox.refresh();      
-            } catch (error) {
-                Notiflix.Notify.failure(error.message);
-            }
-        }
-    }
+  simpleLightbox.refresh();
+}
+
+function onLoadingScroll() {
+  const { scrollTop, clientHeight, scrollHeight } = document.documentElement;
+  if (
+    clientHeight + scrollTop >= scrollHeight &&
+    window.scrollY > 400 &&
+    currentPage < pageAmount
+  ) {
+    refs.loading.classList.add('show');
+    setTimeout(onLoadMore, 500);
+  }
 }
