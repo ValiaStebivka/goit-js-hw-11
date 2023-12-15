@@ -19,7 +19,6 @@ const observer = new IntersectionObserver(handlePagination, options)
 let maxPages;
 let currentPage;
 let searchQuery = '';
-let firstSearch = true;
 
 const lightbox = new simpleLightbox('.gallery a', {
     captionsDelay: 250
@@ -47,9 +46,11 @@ async function handleSubmit(evt) {
         maxPages = Math.ceil(totalHits / 40);
         
         gallery.insertAdjacentHTML('beforeend', createMarkup(hits))
-        if (!firstSearch) {
-            Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`)
-        }
+            if (totalHits) 
+            { Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`) }
+            else { Notiflix.Notify.failure("Sorry, there are no images matching your search query. Please try again.") }
+
+            
         lightbox.refresh();
         if (currentPage < maxPages) {
             observer.observe(loadMore)
@@ -61,7 +62,6 @@ async function handleSubmit(evt) {
 
         Notiflix.Notify.failure(error.message);
     }
-    firstSearch = false;
 }
 
 async function handlePagination(entries, observer) {
